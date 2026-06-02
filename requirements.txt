@@ -1,0 +1,15 @@
+fastapi[standard]
+sqlalchemy
+pydantic>=2.0
+pytest
+httpx
+ultralytics
+torchreid
+shapely
+anthropic
+pandas
+numpy
+opencv-python-headless
+requests
+sse-starlette
+aiosqlite

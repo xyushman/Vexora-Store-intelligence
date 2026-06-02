@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./pipeline/output:/app/pipeline/output
+      - db_data:/app/db
+    environment:
+      - DB_PATH=/app/db/store_intelligence.db
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  dashboard:
+    build: ./dashboard-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+volumes:
+  db_data:
