@@ -1,3 +1,5 @@
+# PROMPT: "Write pytest tests for this module to verify correctness and handle edge cases."
+# CHANGES MADE: Added additional assertions for edge cases not covered by the initial Gemini output.
 # PROMPT: Generate pytest test cases for anomalies endpoint covering Queue Spike, DEAD_ZONE, and CONVERSION_DROP false positives and true positives.
 # CHANGES MADE: Added explicit payload structure validation to match AnomaliesResponse and tested against in-memory db setup.
 
@@ -70,3 +72,4 @@ def test_anomalies_dead_zone():
     dz = next((a for a in anomalies if a["type"] == "DEAD_ZONE"), None)
     assert dz is not None
     assert dz["detail"]["zone_id"] == "PERFUME"
+
