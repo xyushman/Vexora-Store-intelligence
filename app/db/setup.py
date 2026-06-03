@@ -35,30 +35,18 @@ CREATE TABLE IF NOT EXISTS events (
     queue_depth  INTEGER,
     sku_zone     TEXT,
     session_seq  INTEGER,
-    ingested_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    ingested_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 
-CREATE TABLE IF NOT EXISTS sessions (
-    visitor_id   TEXT NOT NULL,
-    store_id     TEXT NOT NULL,
-    entry_ts     TEXT NOT NULL,
-    exit_ts      TEXT,
-    is_reentry   INTEGER DEFAULT 0,
-    PRIMARY KEY (visitor_id, store_id, entry_ts)
-);
 
-CREATE TABLE IF NOT EXISTS pos_transactions (
-    txn_id            TEXT PRIMARY KEY,
-    store_id          TEXT NOT NULL,
-    timestamp         TEXT NOT NULL,
-    basket_value_inr  REAL NOT NULL
-);
 
 CREATE TABLE IF NOT EXISTS conversion_history (
     store_id         TEXT NOT NULL,
     date             TEXT NOT NULL,
     conversion_rate  REAL NOT NULL,
-    PRIMARY KEY (store_id, date)
+    PRIMARY KEY (store_id, date),
+    FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 
 CREATE TABLE IF NOT EXISTS anomaly_log (
@@ -68,14 +56,15 @@ CREATE TABLE IF NOT EXISTS anomaly_log (
     severity      TEXT NOT NULL,
     detected_at   TEXT NOT NULL,
     resolved_at   TEXT,
-    metadata      TEXT
+    metadata      TEXT,
+    FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_store_ts   ON events(store_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_visitor     ON events(store_id, visitor_id, event_type);
-CREATE INDEX IF NOT EXISTS idx_sessions_store     ON sessions(store_id, entry_ts);
+
 CREATE INDEX IF NOT EXISTS idx_anomaly_store      ON anomaly_log(store_id, detected_at);
-CREATE INDEX IF NOT EXISTS idx_pos_store_ts       ON pos_transactions(store_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_pos_store_ts       ON pos_transactions(store_id, timestamp_utc);
     """)
     
     stores = ["ST1008", "STORE_BLR_003", "STORE_MUM_001", "STORE_DEL_004", "STORE_HYD_005"]

@@ -8,9 +8,13 @@ services:
       - ./data:/app/data
       - ./pipeline/output:/app/pipeline/output
       - db_data:/app/db
+      - ./CCTV Footage:/app/cctv:ro
+    env_file:
+      - .env
     environment:
       - DB_PATH=/app/db/store_intelligence.db
       - LOG_LEVEL=INFO
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -22,5 +26,13 @@ services:
       - "3000:3000"
     depends_on:
       - api
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
 volumes:
   db_data:

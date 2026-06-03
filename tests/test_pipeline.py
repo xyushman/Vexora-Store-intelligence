@@ -4,7 +4,7 @@
 # CHANGES MADE: Adapted to mock the pipeline processing function since detect.py is not fully implemented yet, but we are validating the interface contract described in emit.py
 
 import pytest
-from app.models import EventSchema
+from app.schemas import StoreEvent
 from pipeline.emit import process_frame_detections
 
 def test_schema_validation():
@@ -20,7 +20,7 @@ def test_schema_validation():
     }]
     events = process_frame_detections("STORE_1", "CAM_1", detections)
     # This will raise validation error if bad
-    validated = EventSchema(**events[0])
+    validated = StoreEvent(**events[0])
     assert validated.confidence == 0.88
 
 def test_group_entry():
@@ -67,7 +67,7 @@ client = TestClient(app)
 
 def test_ingest_idempotency():
     # POST /events/ingest must be safe to call twice with the same payload
-    payload = [{
+    payload = {"events": [{
         "event_id": str(uuid.uuid4()),
         "store_id": "STORE_IDEMP",
         "camera_id": "CAM_01",
@@ -78,15 +78,15 @@ def test_ingest_idempotency():
         "is_staff": False,
         "confidence": 0.99,
         "metadata": {"session_seq": 1}
-    }]
+    }]}
     
     # First call
-    response1 = client.post("/events/ingest", json=payload)
+    response1 = client.post("/events/ingest", json={"events": payload} if isinstance(payload, list) else payload)
     assert response1.status_code == 200
     assert response1.json()["accepted"] == 1
     
     # Second call - same payload
-    response2 = client.post("/events/ingest", json=payload)
+    response2 = client.post("/events/ingest", json={"events": payload} if isinstance(payload, list) else payload)
     assert response2.status_code == 200
     assert response2.json()["accepted"] == 1 # Still counted as accepted (idempotent)
     

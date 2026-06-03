@@ -1,62 +1,62 @@
-import aiosqlite
+# PROMPT: Refactor metrics to use AsyncSession
+# CHANGES MADE: Updated get_metrics
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from datetime import datetime, timezone
-from .models import MetricsResponse
+from .schemas import MetricsResponse
 
-async def get_metrics(store_id: str, db: aiosqlite.Connection) -> MetricsResponse:
-    async with db.execute("""
+async def get_metrics(store_id: str, db: AsyncSession) -> MetricsResponse:
+    res = await db.execute(text("""
         SELECT COUNT(DISTINCT visitor_id) FROM sessions
-        WHERE store_id=? AND date(entry_ts)=date('now') AND visitor_id NOT IN (
+        WHERE store_id=:sid AND date(first_seen)=date('now') AND visitor_id NOT IN (
           SELECT DISTINCT visitor_id FROM events 
-          WHERE store_id=? AND is_staff=1
+          WHERE store_id=:sid AND is_staff=1
         )
-    """, (store_id, store_id)) as cursor:
-        row = await cursor.fetchone()
-        unique_visitors = int(row[0]) if row and row[0] else 0
+    """), {"sid": store_id})
+    unique_visitors = res.scalar() or 0
 
-    async with db.execute("""
+    res = await db.execute(text("""
         SELECT DISTINCT e.visitor_id FROM events e
         JOIN pos_transactions p ON p.store_id = e.store_id
-        WHERE e.store_id=? 
+        WHERE e.store_id=:sid 
           AND e.zone_id IN ('BILLING','BILLING_COUNTER','CHECKOUT')
           AND e.is_staff=0
-          AND (julianday(p.timestamp) - julianday(e.timestamp)) * 86400 BETWEEN 0 AND 300
-    """, (store_id,)) as cursor:
-        converted_rows = await cursor.fetchall()
-        converted_count = len(converted_rows)
+          AND (julianday(p.timestamp_utc) - julianday(e.timestamp)) * 86400 BETWEEN 0 AND 300
+    """), {"sid": store_id})
+    converted_count = len(res.fetchall())
         
     conversion_rate = float(converted_count) / unique_visitors if unique_visitors > 0 else 0.0
 
-    async with db.execute("""
+    res = await db.execute(text("""
         SELECT zone_id, AVG(dwell_ms) FROM events
-        WHERE store_id=? AND is_staff=0 AND zone_id IS NOT NULL
+        WHERE store_id=:sid AND is_staff=0 AND zone_id IS NOT NULL
           AND event_type='ZONE_DWELL' AND date(timestamp)=date('now')
         GROUP BY zone_id
-    """, (store_id,)) as cursor:
-        dwell_rows = await cursor.fetchall()
-        avg_dwell_per_zone = {row[0]: float(row[1]) for row in dwell_rows} if dwell_rows else {}
+    """), {"sid": store_id})
+    dwell_rows = res.fetchall()
+    avg_dwell_per_zone = {row[0]: float(row[1]) for row in dwell_rows} if dwell_rows else {}
 
-    async with db.execute("""
+    res = await db.execute(text("""
         SELECT queue_depth FROM events
-        WHERE store_id=? AND event_type='BILLING_QUEUE_JOIN'
+        WHERE store_id=:sid AND event_type='BILLING_QUEUE_JOIN'
           AND timestamp > datetime('now','-5 minutes')
         ORDER BY timestamp DESC LIMIT 1
-    """, (store_id,)) as cursor:
-        row = await cursor.fetchone()
-        queue_depth_current = int(row[0]) if row and row[0] is not None else 0
+    """), {"sid": store_id})
+    qd = res.scalar()
+    queue_depth_current = int(qd) if qd is not None else 0
 
-    async with db.execute("""
+    res = await db.execute(text("""
         SELECT COUNT(*) FROM events 
-        WHERE store_id=? AND event_type='BILLING_QUEUE_ABANDON' AND date(timestamp)=date('now')
-    """, (store_id,)) as cursor:
-        row = await cursor.fetchone()
-        abandon_count = int(row[0]) if row and row[0] else 0
+        WHERE store_id=:sid AND event_type='BILLING_QUEUE_ABANDON' AND date(timestamp)=date('now')
+    """), {"sid": store_id})
+    abandon_count = res.scalar() or 0
 
-    async with db.execute("""
+    res = await db.execute(text("""
         SELECT COUNT(*) FROM events 
-        WHERE store_id=? AND event_type='BILLING_QUEUE_JOIN' AND date(timestamp)=date('now')
-    """, (store_id,)) as cursor:
-        row = await cursor.fetchone()
-        join_count = int(row[0]) if row and row[0] else 0
+        WHERE store_id=:sid AND event_type='BILLING_QUEUE_JOIN' AND date(timestamp)=date('now')
+    """), {"sid": store_id})
+    join_count = res.scalar() or 0
 
     abandonment_rate = float(abandon_count) / join_count if join_count > 0 else 0.0
 

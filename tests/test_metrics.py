@@ -34,7 +34,7 @@ def test_all_staff_clip():
         "metadata": {}
     }]
     # Ingest staff event
-    client.post("/events/ingest", json=payload)
+    client.post("/events/ingest", json={"events": payload} if isinstance(payload, list) else payload)
     
     # Query metrics
     response = client.get("/stores/STORE_STAFF_001/metrics")
@@ -56,7 +56,7 @@ def test_zero_purchases():
         "confidence": 0.99,
         "metadata": {}
     }]
-    client.post("/events/ingest", json=payload)
+    client.post("/events/ingest", json={"events": payload} if isinstance(payload, list) else payload)
     
     response = client.get("/stores/STORE_NO_BUY_001/metrics")
     assert response.status_code == 200
@@ -95,7 +95,7 @@ def test_reentry_in_funnel():
             "metadata": {}
         }
     ]
-    client.post("/events/ingest", json=payload)
+    client.post("/events/ingest", json={"events": payload} if isinstance(payload, list) else payload)
     
     # Query funnel
     response = client.get(f"/stores/{store_id}/funnel")

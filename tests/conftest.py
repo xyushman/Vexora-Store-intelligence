@@ -1,41 +1,62 @@
-# PROMPT: "Write pytest tests for this module to verify correctness and handle edge cases."
-# CHANGES MADE: Added additional assertions for edge cases not covered by the initial Gemini output.
+import os
+TEST_DB_PATH = "test_store.db"
+if os.path.exists(TEST_DB_PATH):
+    os.remove(TEST_DB_PATH)
+os.environ["DB_PATH"] = TEST_DB_PATH
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
+os.environ["GEMINI_API_KEY"] = "dummy_test_key_for_gemini"
+
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, StaticPool
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import text
 
 from app.main import app
-from app.db import Base, get_db
+from app.models.base import Base
+from app.db.database import get_db, engine as prod_engine
 
-# Use an in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=prod_engine, class_=AsyncSession)
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_db_tables():
+    async with prod_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS events (
+                event_id TEXT PRIMARY KEY,
+                store_id TEXT,
+                camera_id TEXT,
+                visitor_id TEXT,
+                event_type TEXT,
+                timestamp TEXT,
+                zone_id TEXT,
+                dwell_ms INTEGER,
+                is_staff INTEGER,
+                confidence REAL,
+                queue_depth INTEGER,
+                sku_zone TEXT,
+                session_seq INTEGER
+            )
+        """))
+    yield
+    async with prod_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP TABLE IF EXISTS events"))
 
-@pytest.fixture(scope="function")
-def session():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
+@pytest_asyncio.fixture(scope="function")
+async def session():
+    async with TestingSessionLocal() as db:
         yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(scope="function")
 def client(session):
-    def override_get_db():
-        try:
-            yield session
-        finally:
-            pass
+    async def override_get_db():
+        yield session
+
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    with TestClient(app) as c:
+        yield c
     del app.dependency_overrides[get_db]
+
 
