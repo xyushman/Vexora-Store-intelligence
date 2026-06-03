@@ -122,15 +122,19 @@ export default function StoreHeatmap3D({ heatmap }: { heatmap: any }) {
 
     return layout.map(z => {
       const heat = Array.isArray(heatmap) ? heatmap.find((hz: any) => hz.zone_id === z.id) : null;
-      const dwell_ms = heat?.avg_dwell_ms || 0;
-      const dwell_time_sec = dwell_ms / 1000;
+      const dwell_time_sec = heat?.avg_dwell_seconds || 0;
+      const visitCount = heat?.visit_count || 0;
       // Interpolate color from blue (cool) to red (hot) based on dwell time (e.g. max 300s)
       const intensity = Math.min(dwell_time_sec / 300, 1);
       const color = new THREE.Color().lerpColors(new THREE.Color("#0071e3"), new THREE.Color("#ff3b30"), intensity);
       
-      return { ...z, color: color.getStyle(), dwellTime: dwell_time_sec };
+      return { ...z, color: color.getStyle(), dwellTime: dwell_time_sec, visitCount };
     });
   }, [heatmap]);
+
+  const totalVisitors = useMemo(() => {
+    return zones.reduce((sum, z) => sum + z.visitCount, 0);
+  }, [zones]);
 
   return (
     <div className="w-full h-full min-h-[400px] glass-panel relative overflow-hidden">
@@ -160,7 +164,7 @@ export default function StoreHeatmap3D({ heatmap }: { heatmap: any }) {
           <ZoneMesh key={i} position={z.pos as any} size={z.size as any} color={z.color} label={z.id} dwellTime={z.dwellTime} />
         ))}
         
-        <WanderingAgents zones={zones} count={12} />
+        <WanderingAgents zones={zones} count={Math.min(Math.max(totalVisitors, 5), 30)} />
 
         <OrbitControls 
           enablePan={false} 

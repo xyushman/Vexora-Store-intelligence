@@ -56,11 +56,17 @@ export default function LiveVisionFeeds() {
 
       {/* Video placeholder background */}
       <div className="absolute inset-0 z-0 bg-[#0a0a0a]">
-        <div className="absolute inset-0 flex items-center justify-center text-white/5 font-bold text-4xl">
-          NO SIGNAL
-        </div>
+        <video 
+          key={activeCam} 
+          src={`http://localhost:8000/cctv/CAM ${activeCam}.mp4`} 
+          className="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-screen"
+          autoPlay 
+          muted 
+          loop 
+          playsInline
+        />
         {/* We use a CSS gradient to simulate a grayscale camera feed depth */}
-        <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-700 via-gray-900 to-black" />
+        <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-700 via-gray-900 to-black pointer-events-none" />
       </div>
 
       {/* Bounding Boxes */}

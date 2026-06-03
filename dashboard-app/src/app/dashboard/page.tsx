@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [heatmap, setHeatmap] = useState<any>(null);
   const [funnel, setFunnel] = useState<any[]>([]);
   const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [insights, setInsights] = useState<any>(null);
   
   const STORE_ID = "ST1008";
   const API_BASE = "http://localhost:8000";
@@ -36,15 +37,17 @@ export default function Dashboard() {
     // 1. Initial Fetch of Data
     const fetchInitialData = async () => {
       try {
-        const [heatmapRes, funnelRes, anomaliesRes] = await Promise.all([
+        const [heatmapRes, funnelRes, anomaliesRes, insightsRes] = await Promise.all([
           fetch(`${API_BASE}/stores/${STORE_ID}/heatmap`),
           fetch(`${API_BASE}/stores/${STORE_ID}/funnel`),
           fetch(`${API_BASE}/stores/${STORE_ID}/anomalies`),
+          fetch(`${API_BASE}/stores/${STORE_ID}/insights`),
         ]);
         
         if (heatmapRes.ok) setHeatmap((await heatmapRes.json()).zones);
         if (funnelRes.ok) setFunnel((await funnelRes.json()).funnel);
-        if (anomaliesRes.ok) setAnomalies((await anomaliesRes.json()).active_anomalies);
+        if (anomaliesRes.ok) setAnomalies((await anomaliesRes.json()).anomalies);
+        if (insightsRes.ok) setInsights(await insightsRes.json());
       } catch (err) {
         console.error("Error fetching initial data", err);
       }
@@ -186,11 +189,11 @@ export default function Dashboard() {
           >
             <div className="flex flex-col gap-6 h-full">
               <div className="h-48 shrink-0">
-                <AIAssistant />
+                <AIAssistant anomalies={anomalies} />
               </div>
               
               <div className="h-80 shrink-0">
-                <ShopperInsights />
+                <ShopperInsights data={insights} />
               </div>
 
               <div className="flex-1 min-h-[200px]">

@@ -4,21 +4,28 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Bot, AlertCircle, TrendingUp } from "lucide-react";
 
-const INSIGHTS = [
-  { icon: TrendingUp, text: "Customer dwell time in the Mens section is currently 25% higher than the weekly average. Consider highlighting premium accessories.", type: "insight" },
-  { icon: AlertCircle, text: "Queue depth at Billing is increasing. Suggest deploying Staff ID 2 to open Register 3.", type: "alert" },
-  { icon: Sparkles, text: "Conversion rate for the last hour is showing strong momentum. Peak traffic predicted in 15 minutes.", type: "insight" },
-  { icon: Bot, text: "Monitoring 4 zones. Anomaly detection active. System health is optimal.", type: "system" }
-];
-
-export default function AIAssistant() {
+export default function AIAssistant({ anomalies }: { anomalies?: any[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
 
+  // Map API anomalies to insights
+  const insights = anomalies && anomalies.length > 0 
+    ? anomalies.map(anom => ({
+        icon: anom.severity === 'CRITICAL' ? AlertCircle : (anom.severity === 'WARN' ? TrendingUp : Sparkles),
+        text: anom.suggested_action || anom.detail?.insight || `Anomaly detected: ${anom.type}`,
+        type: anom.severity === 'CRITICAL' ? 'alert' : 'insight'
+      }))
+    : [
+        { icon: Bot, text: "System optimal. Monitoring store zones.", type: "system" }
+      ];
+
+  // Prevent index out of bounds when anomalies change
+  const activeIndex = currentIndex < insights.length ? currentIndex : 0;
+
   useEffect(() => {
     // Typing effect
-    const fullText = INSIGHTS[currentIndex].text;
+    const fullText = insights[activeIndex].text;
     let i = 0;
     setIsTyping(true);
     setDisplayedText("");
@@ -32,18 +39,18 @@ export default function AIAssistant() {
       }
     }, 40);
 
-    // Change insight every 10 seconds
+    return () => clearInterval(typingInterval);
+  }, [activeIndex, insights.length]); // Re-run typing when text changes
+
+  useEffect(() => {
+    if (insights.length <= 1) return;
     const rotateInterval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % INSIGHTS.length);
+      setCurrentIndex((prev) => (prev + 1) % insights.length);
     }, 10000);
+    return () => clearInterval(rotateInterval);
+  }, [insights.length]);
 
-    return () => {
-      clearInterval(typingInterval);
-      clearInterval(rotateInterval);
-    };
-  }, [currentIndex]);
-
-  const CurrentIcon = INSIGHTS[currentIndex].icon;
+  const CurrentIcon = insights[activeIndex].icon;
 
   return (
     <div className="glass-panel p-5 relative overflow-hidden h-full flex flex-col group">
@@ -70,15 +77,15 @@ export default function AIAssistant() {
       <div className="flex-1 flex flex-col justify-center relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentIndex}
+            key={activeIndex}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             className="flex items-start gap-3"
           >
             <div className={`mt-1 p-1.5 rounded-lg border ${
-              INSIGHTS[currentIndex].type === 'alert' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-              INSIGHTS[currentIndex].type === 'insight' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
+              insights[activeIndex].type === 'alert' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+              insights[activeIndex].type === 'insight' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
               'bg-blue-500/10 border-blue-500/30 text-blue-400'
             }`}>
               <CurrentIcon size={18} />
@@ -94,7 +101,7 @@ export default function AIAssistant() {
       </div>
       
       <div className="relative z-10 mt-auto pt-4 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-xs text-black/40 dark:text-white/40">
-        <span>Model: Vexora-Vision-7B</span>
+        <span>Model: Gemini 2.5 Flash</span>
         <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Connected</span>
       </div>
     </div>

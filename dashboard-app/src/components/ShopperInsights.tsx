@@ -4,13 +4,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarA
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 
-const sentimentData = [
+const defaultSentimentData = [
   { name: 'Happy', value: 45, color: '#34d399' },
   { name: 'Neutral', value: 35, color: '#60a5fa' },
   { name: 'Frustrated', value: 20, color: '#f87171' },
 ];
 
-const demographicsData = [
+const defaultDemographicsData = [
   { subject: 'Male', A: 120, fullMark: 150 },
   { subject: 'Female', A: 98, fullMark: 150 },
   { subject: '18-24', A: 86, fullMark: 150 },
@@ -19,21 +19,19 @@ const demographicsData = [
   { subject: '45+', A: 65, fullMark: 150 },
 ];
 
-export default function ShopperInsights() {
+export default function ShopperInsights({ data }: { data?: any }) {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [pulse, setPulse] = useState(0);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-    const interval = setInterval(() => {
-      setPulse(p => p + 1);
-    }, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   if (!mounted) return null;
+
+  const sentimentData = data?.sentiment || defaultSentimentData;
+  const demographicsData = data?.demographics || defaultDemographicsData;
+  const score = data?.score || 82;
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -52,7 +50,7 @@ export default function ShopperInsights() {
                 dataKey="value"
                 stroke="none"
               >
-                {sentimentData.map((entry, index) => (
+                {sentimentData.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -68,7 +66,7 @@ export default function ShopperInsights() {
           </ResponsiveContainer>
           {/* Central score */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-2xl font-bold text-black/90 dark:text-white/90">82</span>
+            <span className="text-2xl font-bold text-black/90 dark:text-white/90">{score}</span>
             <span className="text-[10px] uppercase tracking-wider text-green-500 font-semibold">Score</span>
           </div>
         </div>
