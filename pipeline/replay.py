@@ -9,7 +9,11 @@ def main():
     parser.add_argument("--events", required=True, help="Path to events JSONL file")
     parser.add_argument("--api", required=True, help="API URL")
     parser.add_argument("--speed", type=float, default=10.0, help="Replay speed multiplier")
+    parser.add_argument("--realtime", action="store_true", help="Simulate real-time by forcing speed to 1.0")
     args = parser.parse_args()
+
+    if args.realtime:
+        args.speed = 1.0
 
     events = []
     with open(args.events, 'r') as f:

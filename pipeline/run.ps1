@@ -35,9 +35,9 @@ python pipeline/detect.py `
 $Date = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
 Write-Host "[$Date] Detection complete. Replaying events to API..."
 
-python pipeline/replay.py `
+python pipeline/replay_events.py `
   --events "pipeline/output/${StoreId}_events.jsonl" `
-  --api "$ApiUrl" `
+  --api-base-url "$ApiUrl" `
   --speed 10
 
 $Date = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"

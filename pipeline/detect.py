@@ -23,6 +23,12 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 
 try:
+    import torch
+    _old_load = torch.load
+    def _safe_load(*args, **kwargs):
+        kwargs['weights_only'] = False
+        return _old_load(*args, **kwargs)
+    torch.load = _safe_load
     from ultralytics import YOLO
 except ImportError:
     print("Error: ultralytics is not installed. Please install it.")
@@ -321,6 +327,17 @@ def main():
                     conf = float(box.conf.item())
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+                    
+                    h = y2 - y1
+                    w = x2 - x1
+                    if w <= 0 or h <= 0:
+                        continue
+                    # Aspect ratio check: Real standing people have h/w > 1.1
+                    if h / w < 1.1:
+                        continue
+                    # Size check: Ignore very small detections (e.g. reflections or distant posters)
+                    if h < frame_height * 0.15:
+                        continue
                     
                     active_tracks_in_frame.add(track_id)
                     
